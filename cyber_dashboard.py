@@ -139,7 +139,7 @@ def render_historical_dashboard():
         st.stop()
 
     # --- HEADER ---
-    st.markdown('<div class="main-header">Global Cyber Threats Intelligence</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header">Global Cyber Security Dashboard: Tracking Threats & Financial Loss</div>', unsafe_allow_html=True)
     st.markdown('<div class="sub-header">Advanced Analysis, Statistical Insights, and Predictive Modeling (2015 - 2025)</div>', unsafe_allow_html=True)
 
     # --- MODERN FILTERS ---
