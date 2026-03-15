@@ -327,11 +327,39 @@ def render_live_dashboard():
                                         "Total IOC Count": False
                                      },
                                      size="Total IOC Count",
-                                     projection="natural earth", title="",
-                                     color_discrete_map={'RED': '#EF4444', 'AMBER': '#F59E0B', 'GREEN': '#10B981', 'WHITE': '#F8FAFC'})
-            fig_map.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                                  geo={'bgcolor': 'rgba(0,0,0,0)', 'lakecolor': '#0F172A', 'landcolor': '#1E293B', 'showocean': True, 'oceancolor': '#0F172A'},
-                                  margin={'t': 0, 'b': 0, 'l': 0, 'r': 0})
+                                     size_max=30,
+                                     projection="orthographic",   # 🌍 Real 3D globe!
+                                     title="",
+                                     color_discrete_map={'RED': '#EF4444', 'AMBER': '#F59E0B', 'GREEN': '#10B981', 'WHITE': '#3B82F6'})
+            fig_map.update_traces(
+                mode='markers+text',                         # Show BOTH dot AND country name
+                text=geo_df['🌍 Attack Origin'],             # Country name label
+                textposition='top center',
+                textfont=dict(color='#E2E8F0', size=10, family="'Inter', sans-serif"),
+                marker=dict(opacity=0.85, line=dict(width=0.5, color='white'))
+            )
+            fig_map.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                margin={'t': 0, 'b': 0, 'l': 0, 'r': 0},
+                height=500,
+                geo=dict(
+                    projection_type='orthographic',
+                    showland=True,          landcolor='#2D5A27',      # Deep forest green land
+                    showocean=True,         oceancolor='#1A3A5C',     # Deep ocean blue
+                    showlakes=True,         lakecolor='#1A3A5C',      # Same as ocean
+                    showrivers=True,        rivercolor='#2563EB',     # River blue
+                    showcoastlines=True,    coastlinecolor='#94A3B8', # Light grey coastline
+                    showcountries=True,     countrycolor='#475569',   # Country borders
+                    showframe=False,
+                    bgcolor='rgba(0,0,0,0)',
+                    lataxis_showgrid=False,
+                    lonaxis_showgrid=False,
+                    # Center the globe view 
+                    center=dict(lat=20, lon=0),
+                    projection_rotation=dict(lon=0, lat=0, roll=0),
+                )
+            )
             st.plotly_chart(fig_map, use_container_width=True)
         else:
             st.info("Awaiting live geolocation coordinates to visualize threat map...")
@@ -340,31 +368,80 @@ def render_live_dashboard():
 
         r1c1, r1c2 = st.columns(2)
         with r1c1:
-            # Technical TLP Distribution
+            # Alert Severity — beautiful colored donut chart with visible colors for all TLP types
             tlp_counts = filtered_df['TLP Urgency'].value_counts().reset_index()
-            tlp_counts.columns = ['TLP', 'Count']
-            # Map official colors to TLP
-            color_map = {'WHITE': '#F8FAFC', 'GREEN': '#10B981', 'AMBER': '#F59E0B', 'RED': '#EF4444'}
-            colors = [color_map.get(t, '#64748B') for t in tlp_counts['TLP']]
+            tlp_counts.columns = ['Danger Level', 'Count']
+            tlp_label_map = {
+                'RED':          '🔴 Critical',
+                'AMBER':        '🟡 High',
+                'GREEN':        '🟢 Low Risk',
+                'WHITE':        '🔵 Info Only',   # Steel blue — not white (which was invisible!)
+                'UNCLASSIFIED': '⚫ Unknown',
+            }
+            tlp_color_map = {
+                '🔴 Critical':   '#EF4444',
+                '🟡 High':       '#F59E0B',
+                '🟢 Low Risk':   '#10B981',
+                '🔵 Info Only':  '#3B82F6',   # Blue (not white) — always visible on dark theme
+                '⚫ Unknown':    '#64748B',
+            }
+            tlp_counts['Danger Level'] = tlp_counts['Danger Level'].map(tlp_label_map).fillna(tlp_counts['Danger Level'])
 
-            fig_tlp = px.pie(tlp_counts, values="Count", names="TLP",
-                            title="Alert Severity", hole=0.7)
-            fig_tlp.update_traces(marker={'colors': colors}, hoverinfo="label+percent", textinfo="none")
-            fig_tlp.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"},
-                                  margin={'t': 50, 'b': 20, 'l': 20, 'r': 20}, showlegend=True, legend={'orientation': "h", 'y': -0.2})
+            fig_tlp = px.pie(
+                tlp_counts, values='Count', names='Danger Level',
+                title='⚠️ Alert Severity', hole=0.55,
+                color='Danger Level', color_discrete_map=tlp_color_map
+            )
+            fig_tlp.update_traces(
+                textinfo='label+percent',
+                textfont_size=12,
+                pull=[0.04] * len(tlp_counts),        # Slight pull on all slices = premium look
+                marker=dict(line=dict(color='#0F172A', width=2))  # Dark border between slices
+            )
+            fig_tlp.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"},
+                margin={'t': 60, 'b': 10, 'l': 10, 'r': 10},
+                showlegend=True,
+                legend=dict(orientation='h', y=-0.15, font=dict(size=11))
+            )
             st.plotly_chart(fig_tlp, use_container_width=True)
 
         with r1c2:
-            # Dominant IOC Vector - Treemap for better visual appeal
+            # Payload Types — vibrant multi-color donut chart with plain labels
+            ioc_label_map = {
+                'IPv4':          '🌐 Malicious IP',
+                'Domain':        '🔗 Bad Website',
+                'File Hash':     '📄 Infected File',
+                'Malicious URL': '🔗 Malicious Link',
+                'Misc/Other':    '❓ Other',
+            }
+            ioc_vivid_colors = ['#3B82F6', '#8B5CF6', '#EC4899', '#F59E0B', '#10B981']
             ioc_counts = filtered_df['Dominant IOC Type'].value_counts().reset_index()
-            ioc_counts.columns = ['Entity Type', 'Volume']
-            if not ioc_counts.empty and ioc_counts['Volume'].sum() > 0:
-                fig_ioc = px.treemap(ioc_counts, path=['Entity Type'], values='Volume',
-                              title="Malicious Payload Types (Treemap)", color='Volume', color_continuous_scale="Blues")
-                fig_ioc.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"}, margin={'t': 50, 'b': 20, 'l': 20, 'r': 20})
+            ioc_counts.columns = ['Payload Type', 'Count']
+            ioc_counts['Payload Type'] = ioc_counts['Payload Type'].map(ioc_label_map).fillna(ioc_counts['Payload Type'])
+            if not ioc_counts.empty and ioc_counts['Count'].sum() > 0:
+                fig_ioc = px.pie(
+                    ioc_counts, values='Count', names='Payload Type',
+                    title='🦠 Threat Types Detected', hole=0.55,
+                    color_discrete_sequence=ioc_vivid_colors
+                )
+                fig_ioc.update_traces(
+                    textinfo='label+percent',
+                    textfont_size=12,
+                    pull=[0.04] * len(ioc_counts),
+                    marker=dict(line=dict(color='#0F172A', width=2))
+                )
+                fig_ioc.update_layout(
+                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                    font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"},
+                    margin={'t': 60, 'b': 10, 'l': 10, 'r': 10},
+                    showlegend=True,
+                    legend=dict(orientation='h', y=-0.15, font=dict(size=11))
+                )
                 st.plotly_chart(fig_ioc, use_container_width=True)
             else:
-                 st.info("Awaiting sufficient payload data for Treemap rendering.")
+                st.info("Awaiting live payload data...")
 
 
     # ==========================================
@@ -461,19 +538,36 @@ def render_live_dashboard():
                 recent_pulses = filtered_df.tail(10).iloc[::-1]
                 ticker_html = '<div style="font-family:monospace; font-size:0.85rem; color:#E2E8F0; background:#0F172A; padding:15px; border:1px solid #334155; height:350px; overflow-y:auto; border-radius:8px; box-shadow: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);">'
                 for _, row in recent_pulses.iterrows():
-                    alert_color = "#EF4444" if row['TLP Urgency'] == "RED" else "#F59E0B" if row['TLP Urgency'] == "AMBER" else "#10B981" if row['Primary Tag'] != 'UNCLASSIFIED' else "#64748B"
-                    
-                    geo_info = f"<span style='color:#FDE047'>📍 ORIGIN: {row['Target Country']}</span> | " if pd.notna(row.get('Target Country')) and row.get('Target Country') != "Unknown" else ""
-                    
-                    ticker_html += f"""
-                    <div style="margin-bottom:8px; border-bottom:1px solid #334155; padding-bottom:6px;">
-                        <span style="color:#64748B">[{row['Timestamp'].split(' ')[1]}]</span> 
-                        <span style="color:{alert_color}; font-weight:bold;">[{row['TLP Urgency']}]</span> 
-                        {geo_info}<b>{row['Pulse Name']}</b>
-                        <br>
-                        <span style="color:#3B82F6">&rarr; AGENCY: {row['Reporting Author']} | <span style="color:#A78BFA">TAG: {row['Primary Tag']}</span> | IOCS_DETECTED: {row['Total IOC Count']}</span> 
-                    </div>
-                    """
+                    try:
+                        # Safely extract time portion from timestamp
+                        ts_raw = str(row.get('Timestamp', ''))
+                        ts_parts = ts_raw.split(' ')
+                        ts_display = ts_parts[1] if len(ts_parts) > 1 else ts_raw[:8] if len(ts_raw) >= 8 else ts_raw
+
+                        tlp = str(row.get('TLP Urgency', 'UNKNOWN'))
+                        tag = str(row.get('Primary Tag', 'UNKNOWN'))
+                        alert_color = "#EF4444" if tlp == "RED" else "#F59E0B" if tlp == "AMBER" else "#10B981" if tag != 'UNCLASSIFIED' else "#64748B"
+
+                        country = row.get('Target Country', '')
+                        geo_info = f"<span style='color:#FDE047'>📍 {country}</span> | " if pd.notna(country) and str(country) not in ("Unknown", "", "nan") else ""
+
+                        pulse_name = str(row.get('Pulse Name', 'Unknown Pulse'))
+                        author    = str(row.get('Reporting Author', 'Unknown'))
+                        ioc_count = str(row.get('Total IOC Count', '?'))
+
+                        # Build HTML as a compact string — no leading spaces (which Streamlit treats as code blocks)
+                        entry = (
+                            f'<div style="margin-bottom:8px;border-bottom:1px solid #334155;padding-bottom:6px;">'
+                            f'<span style="color:#64748B">[{ts_display}]</span> '
+                            f'<span style="color:{alert_color};font-weight:bold;">[{tlp}]</span> '
+                            f'{geo_info}<b>{pulse_name}</b><br>'
+                            f'<span style="color:#3B82F6">&rarr; AGENCY: {author} | '
+                            f'<span style="color:#A78BFA">TAG: {tag}</span> | THREATS: {ioc_count}</span>'
+                            f'</div>'
+                        )
+                        ticker_html += entry
+                    except Exception:
+                        ticker_html += "<div style='color:#EF4444; margin-bottom:4px;'>⚠️ Could not render this log entry.</div>"
                 ticker_html += "</div>"
                 st.markdown(ticker_html, unsafe_allow_html=True)
 
