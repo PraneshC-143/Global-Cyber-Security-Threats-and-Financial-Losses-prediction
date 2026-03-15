@@ -111,7 +111,7 @@ def render_live_dashboard():
         ]
 
     # --- SIDEBAR CONTROLS ---
-    st.sidebar.markdown("### 🔌 TACTICAL CONTROLS")
+    st.sidebar.markdown("### ⚙️ Live Settings")
     auto_refresh = st.sidebar.checkbox("📡 STREAM ACTIVE", value=True)
     refresh_rate = st.sidebar.slider("Polling Frequency (Sec)", min_value=2, max_value=15, value=5)
 
@@ -182,37 +182,81 @@ def render_live_dashboard():
 
             if not new_df.empty:
                 st.session_state['live_df'] = pd.concat([st.session_state['live_df'], new_df]).tail(500)
+                
+                # Ensure numerical columns are actually numeric to prevent Plotly/Narwhals errors
+                num_cols = ['Total IOC Count', 'IPv4 Payload', 'Hash Payload', 'Lat', 'Lon']
+                for col in num_cols:
+                    if col in st.session_state['live_df'].columns:
+                        st.session_state['live_df'][col] = pd.to_numeric(st.session_state['live_df'][col], errors='coerce')
+                
                 st.session_state['preprocessing_logs'].append(f"[{datetime.datetime.now().strftime('%H:%M:%S')}] RECV: {len(new_df)} authentic Pulses ingested into SOC radar.")
 
     df = st.session_state['live_df']
 
     # --- MODERN QUICK FILTERS ---
-    st.sidebar.markdown("### 🎛️ INGESTION FILTERS")
+    st.sidebar.markdown("### 🔍 Live Filters")
     if not df.empty:
         all_tlps = ["RED", "AMBER", "GREEN", "WHITE", "UNCLASSIFIED"]
-        selected_tlps = st.sidebar.multiselect("TLP Protocol Filter", options=all_tlps, default=all_tlps)
+        selected_tlps = st.sidebar.multiselect("TLP Protocol Filter", options=all_tlps, default=all_tlps, help="TLP (Traffic Light Protocol) indicates the severity of the threat. RED is critical, GREEN is low risk, and WHITE is unclassified.")
         
+        # Plain-English labels for complex attack tag codes
+        TAG_LABELS = {
+            "Malware":        "🦠 Malware (Harmful Software)",
+            "Phishing":       "🎣 Phishing (Fake Email / Website Scam)",
+            "Botnet":         "🤖 Botnet (Army of Hacked Computers)",
+            "Scanner":        "🔍 Scanner (Probing for Weaknesses)",
+            "C2":             "📡 Remote Control Server (C2)",
+            "Exploit":        "💥 Exploit (Using Known Software Bugs)",
+            "UNCLASSIFIED":   "❓ Unclassified (Unknown / Uncategorized)",
+        }
         # Extract unique tags from the current session state
-        all_tags = ["Malware", "Phishing", "Botnet", "Scanner", "C2", "Exploit", "UNCLASSIFIED"] + sorted(df['Primary Tag'].unique().tolist())
-        all_tags = list(dict.fromkeys(all_tags)) # deduplicate while preserving order
-        selected_tags = st.sidebar.multiselect("Active Tag Filter", options=all_tags, default=all_tags[:10])
+        raw_tags = ["Malware", "Phishing", "Botnet", "Scanner", "C2", "Exploit", "UNCLASSIFIED"] + sorted(df['Primary Tag'].unique().tolist())
+        raw_tags = list(dict.fromkeys(raw_tags))  # deduplicate while preserving order
+        # Map raw tag to friendly label; fallback keeps original if no mapping exists
+        friendly_tags = [TAG_LABELS.get(t, f"🏷️ {t}") for t in raw_tags]
+        # Build reverse map for filtering later
+        friendly_to_raw = {TAG_LABELS.get(t, f"🏷️ {t}"): t for t in raw_tags}
+
+        selected_friendly = st.sidebar.multiselect(
+            "🏷️ Filter by Attack Type",
+            options=friendly_tags,
+            default=friendly_tags[:10],
+            help=(
+                "Filter which types of attacks to show:\n"
+                "🦠 Malware = Harmful software (viruses, spyware)\n"
+                "🎣 Phishing = Fake sites/emails stealing passwords\n"
+                "🤖 Botnet = Many hacked devices acting together\n"
+                "🔍 Scanner = Automated tools looking for weaknesses\n"
+                "📡 C2 = A hidden computer controlling the attack remotely\n"
+                "💥 Exploit = Using known software bugs to break in\n"
+                "❓ Unclassified = Attack type not yet identified"
+            )
+        )
+        # Map selected friendly labels back to raw tags for filtering
+        selected_tags = [friendly_to_raw.get(f, f) for f in selected_friendly]
 
         filtered_df = df[
             (df['TLP Urgency'].isin(selected_tlps)) &
             (df['Primary Tag'].isin(selected_tags))
-        ]
+        ].copy()
+        
+        # Enforce strict numeric types for Plotly/Narwhals compatibility
+        num_cols = ['Total IOC Count', 'IPv4 Payload', 'Hash Payload', 'Lat', 'Lon']
+        for col in num_cols:
+            if col in filtered_df.columns:
+                filtered_df[col] = pd.to_numeric(filtered_df[col], errors='coerce').fillna(0)
     else:
         filtered_df = df
         st.sidebar.info("Awaiting telemetry for filter generation.")
 
     st.sidebar.markdown("---")
-    st.sidebar.markdown(f"**IOCs Tracked in Session:** `{filtered_df['Total IOC Count'].sum():,}`" if not filtered_df.empty else "0")
+    st.sidebar.markdown(f"<div title='Indicators of Compromise (IOCs) are clues like malicious IP addresses or viruses found in an attack.'><b>IOCs Tracked in Session:</b> `{filtered_df['Total IOC Count'].sum():,}`</div>" if not filtered_df.empty else "0", unsafe_allow_html=True)
 
 
     # --- HEADER ---
-    st.markdown('<div class="main-header">Real-Time Global Threat Monitor</div>', unsafe_allow_html=True)
-    st.markdown('<div class="live-badge">🔴 LIVE ALIENVAULT FEED</div>', unsafe_allow_html=True)
-    st.markdown(f'<div class="sub-header">Powered by Open Threat Exchange Intelligence | Last Updated: {datetime.datetime.now().strftime("%H:%M:%S UTC")}</div>', unsafe_allow_html=True)
+    st.markdown('<div class="main-header"><span style="font-size: 0.7em;">🔴</span> Live Threat Radar</div>', unsafe_allow_html=True)
+    st.markdown('<div class="live-badge">REAL-TIME ALIENVAULT FEED</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="sub-header">Live attack mapping from the Open Threat Exchange | As of: {datetime.datetime.now().strftime("%H:%M:%S UTC")}</div>', unsafe_allow_html=True)
 
     if df.empty:
         st.info("Awaiting initial OTX sensor payload. Establishing connection array...")
@@ -227,62 +271,62 @@ def render_live_dashboard():
 
     # --- TABS LAYOUT ---
     tab1, tab2, tab3, tab4 = st.tabs([
-        "🌐 Global Live Feed", 
-        "🔬 Threat Intelligence", 
-        "📈 Predictive Analytics", 
-        "🗄️ Raw Data Feed"
+        "🌍 Live Map", 
+        "🔗 Threat Connections", 
+        "📈 Trend Forecast", 
+        "📝 Raw Logs"
     ])
 
     # ==========================================
     # TAB 1: GLOBAL LIVE FEED (Accessible Metrics)
     # ==========================================
     with tab1:
-        st.markdown("### 📡 Live Threat Telemetry", help="This dashboard visualizes incoming global cyber-attacks (Pulses) intercepted by the AlienVault network in real-time.")
+        st.markdown("### 🌍 Global Live Map", help="This dashboard visualizes incoming global cyber-attacks (Pulses) intercepted by the AlienVault network in real-time.")
         col1, col2, col3, col4 = st.columns(4)
         with col1:
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="color:#94A3B8; margin:0; font-size:1rem;">ACTIVE CYBER ATTACKS</h4>
-                <h2 style="color:#60A5FA; margin:10px 0 0 0;">{len(filtered_df):,}</h2>
-                <p style="color:#64748B; font-size:0.8rem; margin:5px 0 0 0;">Recent global events tracked</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric(label="Live Attacks Tracked", value=f"{len(filtered_df):,}", help="The number of unique cyber attacks currently logged by the global sensor network.")
         with col2:
             total_iocs = filtered_df['Total IOC Count'].sum()
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="color:#94A3B8; margin:0; font-size:1rem;">MALICIOUS ENTITIES CAUGHT</h4>
-                <h2 style="color:#F87171; margin:10px 0 0 0;">{total_iocs:,.0f}</h2>
-                <p style="color:#64748B; font-size:0.8rem; margin:5px 0 0 0;">Infected IPs, Domains & Files</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric(label="Malicious Items Found", value=f"{total_iocs:,.0f}", help="Indicators of Compromise (IOC). These are malicious IPs, viruses, or phishing links found inside the attacks.")
         with col3:
             high_alert = len(filtered_df[filtered_df['TLP Urgency'].isin(['RED', 'AMBER'])])
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="color:#94A3B8; margin:0; font-size:1rem;">CRITICAL SEVERITY ALERTS</h4>
-                <h2 style="color:#34D399; margin:10px 0 0 0;">{high_alert}</h2>
-                <p style="color:#64748B; font-size:0.8rem; margin:5px 0 0 0;">High organizational impact</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric(label="High Priority Alerts", value=f"{high_alert}", help="Attacks flagged as RED (Critical) or AMBER (High) risk by the intelligence community.")
         with col4:
             top_author = filtered_df['Reporting Author'].mode()[0] if not filtered_df.empty else "UNKNOWN"
-            st.markdown(f"""
-            <div class="metric-card">
-                <h4 style="color:#94A3B8; margin:0; font-size:1rem;">TOP REPORTING AGENCY</h4>
-                <h2 style="color:#A78BFA; margin:10px 0 0 0;">{top_author[:15]}</h2>
-                <p style="color:#64748B; font-size:0.8rem; margin:5px 0 0 0;">Most active intelligence source</p>
-            </div>
-            """, unsafe_allow_html=True)
+            st.metric(label="Top Reporting Source", value=f"{top_author[:15]}", help="The cybersecurity organization or analyst that reported the most threats in your current filter.")
 
         st.markdown("<br>", unsafe_allow_html=True)
 
         # NEW: Live Global Threat Map
-        st.markdown("#### 🗺️ Global Origin Footprint")
-        geo_df = filtered_df.dropna(subset=['Lat', 'Lon'])
+        st.markdown("#### 🗺️ Where Are The Attacks Coming From?")
+        geo_df = filtered_df.dropna(subset=['Lat', 'Lon']).copy()
         if not geo_df.empty:
+            geo_df['Total IOC Count'] = pd.to_numeric(geo_df['Total IOC Count'], errors='coerce').fillna(1.0).astype(float)
+
+            # Create plain-English tooltip columns
+            geo_df['🌍 Attack Origin'] = geo_df['Target Country']
+            geo_df['⚠️ Danger Level'] = geo_df['TLP Urgency'].map({
+                'RED': '🔴 Critical',
+                'AMBER': '🟡 High',
+                'GREEN': '🟢 Low',
+                'WHITE': '⚪ Informational'
+            }).fillna(geo_df['TLP Urgency'])
+            geo_df['🦠 Threats Found'] = geo_df['Total IOC Count'].astype(int).astype(str) + ' (IPs, files & links)'
+            geo_df['🏷️ Attack Type'] = geo_df['Primary Tag']
+            geo_df['🕵️ Reported By'] = geo_df['Reporting Author']
+
             fig_map = px.scatter_geo(geo_df, lat="Lat", lon="Lon", color="TLP Urgency",
-                                     hover_name="Target Country", size="Total IOC Count",
+                                     hover_name="🌍 Attack Origin",
+                                     hover_data={
+                                        "⚠️ Danger Level": True,
+                                        "🦠 Threats Found": True,
+                                        "🏷️ Attack Type": True,
+                                        "🕵️ Reported By": True,
+                                        "Lat": False, "Lon": False,
+                                        "TLP Urgency": False,
+                                        "Total IOC Count": False
+                                     },
+                                     size="Total IOC Count",
                                      projection="natural earth", title="",
                                      color_discrete_map={'RED': '#EF4444', 'AMBER': '#F59E0B', 'GREEN': '#10B981', 'WHITE': '#F8FAFC'})
             fig_map.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
@@ -304,9 +348,9 @@ def render_live_dashboard():
             colors = [color_map.get(t, '#64748B') for t in tlp_counts['TLP']]
 
             fig_tlp = px.pie(tlp_counts, values="Count", names="TLP",
-                            title="Alert Severity Distribution", hole=0.7)
+                            title="Alert Severity", hole=0.7)
             fig_tlp.update_traces(marker={'colors': colors}, hoverinfo="label+percent", textinfo="none")
-            fig_tlp.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'family': "'Inter', sans-serif"},
+            fig_tlp.update_layout(paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"},
                                   margin={'t': 50, 'b': 20, 'l': 20, 'r': 20}, showlegend=True, legend={'orientation': "h", 'y': -0.2})
             st.plotly_chart(fig_tlp, use_container_width=True)
 
@@ -317,7 +361,7 @@ def render_live_dashboard():
             if not ioc_counts.empty and ioc_counts['Volume'].sum() > 0:
                 fig_ioc = px.treemap(ioc_counts, path=['Entity Type'], values='Volume',
                               title="Malicious Payload Types (Treemap)", color='Volume', color_continuous_scale="Blues")
-                fig_ioc.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'family': "'Inter', sans-serif"}, margin={'t': 50, 'b': 20, 'l': 20, 'r': 20})
+                fig_ioc.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"}, margin={'t': 50, 'b': 20, 'l': 20, 'r': 20})
                 st.plotly_chart(fig_ioc, use_container_width=True)
             else:
                  st.info("Awaiting sufficient payload data for Treemap rendering.")
@@ -327,24 +371,24 @@ def render_live_dashboard():
     # TAB 2: THREAT INTELLIGENCE (Correlation)
     # ==========================================
     with tab2:
-        st.markdown("### 🔬 Threat Intelligence Correlation")
-        st.markdown("Statistically correlating the size of the attack payload to discover related patterns.", help="A heatmap shows relationships between data points. A high number signifies strong correlation (e.g. big payloads often mean severe attacks).")
+        st.markdown("### 🔗 How Do Different Attack Factors Relate?")
+        st.markdown("This heatmap shows if certain types of attacks happen together. Darker matching colors mean a stronger connection.", help="A heatmap shows relationships between data points. A high number signifies strong correlation (e.g. big payloads often mean severe attacks).")
 
         st_col1, st_col2 = st.columns([1, 1.5])
 
         with st_col1:
-            st.markdown("<h4 style='color:#94A3B8; font-family:Inter;'>Live Payload Statistics</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color:#94A3B8; font-family:Inter;'>Current Attack Stats</h4>", unsafe_allow_html=True)
             numerical_cols = ['Total IOC Count', 'IPv4 Payload', 'Hash Payload']
             desc_stats = filtered_df[numerical_cols].describe().T
             st.dataframe(desc_stats.style.format("{:.0f}").background_gradient(cmap='Blues'), use_container_width=True)
 
         with st_col2:
-            st.markdown("<h4 style='color:#94A3B8; font-family:Inter;'>Payload Density Heatmap</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='color:#94A3B8; font-family:Inter;'>Attack Correlation Map</h4>", unsafe_allow_html=True)
             if len(filtered_df) > 3:
                 corr_matrix = filtered_df[numerical_cols].corr()
                 fig_corr = px.imshow(corr_matrix, text_auto=True, aspect="auto", 
                                      color_continuous_scale='Blues', title="")
-                fig_corr.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'family': "'Inter', sans-serif"}, margin={'t': 10})
+                fig_corr.update_layout(paper_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"}, margin={'t': 10})
                 st.plotly_chart(fig_corr, use_container_width=True)
             else:
                 st.info("Gathering array density for Matrix calculation...")
@@ -354,8 +398,8 @@ def render_live_dashboard():
     # TAB 3: PREDICTIVE ANALYTICS
     # ==========================================
     with tab3:
-        st.markdown("### 📈 Predictive Threat Saturation")
-        st.markdown("Mathematical regression tracking the volume of attacks hitting the global network to project short-term future velocity.", help="Uses polynomial regression fit over the incoming network packets.")
+        st.markdown("### 📈 Short-Term Attack Forecast")
+        st.markdown("Tracking the current volume of attacks to estimate what will happen in the next few minutes.", help="Uses polynomial regression fit over the incoming network packets.")
 
         if len(filtered_df) > 5:
             temp_df = filtered_df.copy()
@@ -393,7 +437,7 @@ def render_live_dashboard():
 
                 fig_pred.update_layout(title="",
                                        xaxis_title="Time Interval (System Ticks)", yaxis_title="Cumulative Payload Volume", 
-                                       hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'family': "'Inter', sans-serif"})
+                                       hovermode="x unified", paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', font={'color': '#E2E8F0', 'family': "'Inter', sans-serif"})
                 fig_pred.update_xaxes(showgrid=True, gridwidth=1, gridcolor='#334155')
                 fig_pred.update_yaxes(showgrid=True, gridwidth=1, gridcolor='#334155')
                 st.plotly_chart(fig_pred, use_container_width=True)
@@ -407,7 +451,7 @@ def render_live_dashboard():
     # TAB 4: RAW DATA FEED
     # ==========================================
     with tab4:
-        st.markdown("### 🗄️ Raw Intelligence Feed")
+        st.markdown("### 📝 Raw Data Logs")
         st.markdown("For analysts: View the raw incident data streaming directly from the AlienVault OTX REST Endpoint.")
 
         col_hlth1, col_hlth2 = st.columns([3,2])
