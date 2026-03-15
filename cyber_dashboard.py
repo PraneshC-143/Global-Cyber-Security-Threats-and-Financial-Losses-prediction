@@ -113,7 +113,7 @@ def log_process(msg):
 def load_and_clean_data():
     try:
         # Load Raw Data
-        df = pd.read_csv('c:/Users/ELCOT/.gemini/antigravity/scratch/Global_Cybersecurity_Threats_2015-2025.csv')
+        df = pd.read_csv('Global_Cybersecurity_Threats_2015-2025.csv')
         raw_shape = df.shape
         st.session_state['preprocessing_logs'] = [] # Reset logs
         log_process(f"✅ Loaded raw dataset with {raw_shape[0]} rows and {raw_shape[1]} columns.")
