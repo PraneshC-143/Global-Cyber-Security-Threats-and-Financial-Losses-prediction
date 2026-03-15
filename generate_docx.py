@@ -138,8 +138,8 @@ def create_guide():
             else:
                 doc.add_paragraph(p)
 
-    doc.save("c:/Users/ELCOT/.gemini/antigravity/scratch/Cybersecurity_Dashboard_Project_Copy/Project_Explanation_Guide.docx")
-    print("Successfully created Project_Explanation_Guide.docx")
+    doc.save("c:/Users/ELCOT/.gemini/antigravity/scratch/Cybersecurity_Dashboard_Project_Copy/Project_Explanation_Guide_V2.docx")
+    print("Successfully created Project_Explanation_Guide_V2.docx")
 
 if __name__ == "__main__":
     create_guide()
