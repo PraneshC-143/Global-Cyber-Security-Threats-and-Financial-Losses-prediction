@@ -11,6 +11,9 @@ You are an expert Cybersecurity Data Scientist and Technical Presenter. Generate
 **CRITICAL INSTRUCTIONS FOR AI:**
 Do NOT use generic placeholders (like "we used Random Forest" or "future step: live data"). You MUST use the exact facts, technologies, and features provided below. The tone should be authoritative, highly technical but accessible, and emphasize our unique "Two Brains" approach (Historical Modeling + Live API Radar).
 
+**VISUAL THEME INSTRUCTION:**
+Please format this presentation using a **"Light Cybersecurity Theme"**. It should feel professional, clinical, and modern—using a white/light gray background with sharp accents of cyber-blue and alert-red. Avoid the typical "dark hacker" aesthetics; we want it to look like a clean, enterprise-grade executive briefing.
+
 ### Project Facts (Must Include):
 1. **The "Two Brains" Core Architecture:**
    - **Mode 1 (Historical ML Engine):** Analyzes 10 years of attack data (2015-2025) across 3,300 instances.
