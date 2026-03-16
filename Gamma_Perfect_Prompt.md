@@ -32,16 +32,18 @@ Do NOT use generic placeholders (like "we used Random Forest" or "future step: l
    - **Visuals:** Plotly Express & Plotly Graph Objects.
    - **Live API:** Requests module hitting AlienVault OTX.
 
-### Required Slide Structure:
-- **Slide 1:** Title Page & The "Two Brains" Concept
-- **Slide 2:** The Problem (The rising geometric cost of cyber attacks)
-- **Slide 3:** Our Solution: A Web-based Decision Support System
-- **Slide 4:** Technology Stack (Mention Streamlit, Plotly, Scikit-learn, AlienVault OTX)
-- **Slide 5:** Historical ML Engine (Detail the 3,300 record dataset & 10-year span)
-- **Slide 6:** Predictive Modeling (Detail the Polynomial Regression and 92% Accuracy)
-- **Slide 7:** Live Threat Radar (Detail the AlienVault API connection and live ingestion)
-- **Slide 8:** Advanced Visualizations (Detail the 3D Globe and TLP Donut charts)
-- **Slide 9:** UI/UX Accessibility (How we simplified jargon for board-level executives)
-- **Slide 10:** Conclusion & Real-World Impact (Why this tool is vastly superior to static logs)
+### Required Slide Structure (12 Slides Total):
+- **Slide 1: Title Page** (Must include exact title: "Global Cyber Security Threats and Financial Losses Prediction". Add bold placeholders for **[Your Name]**, **[Your Class/Section]**, and **Guide: [Your Guide's Name]**).
+- **Slide 2: Agenda** (A clear outline of what causes, solutions, features, and impacts will be discussed).
+- **Slide 3: The Problem** (The rising geometric cost of cyber attacks and the need for data-driven monitoring).
+- **Slide 4: Our Solution: A Web-based Decision Support System** (Introduce the concept of combining historical analysis with live intelligence).
+- **Slide 5: Technology Stack** (Explicitly mention Streamlit, Plotly, Scikit-learn, AlienVault OTX API).
+- **Slide 6: Historical ML Engine** (Detail the 3,300 record dataset & 10-year span).
+- **Slide 7: Predictive Modeling** (Detail the use of Polynomial Regression Degree 2 and the massive 92% Accuracy on the test holdout).
+- **Slide 8: Live Threat Radar** (Detail the AlienVault API connection and live IP threat ingestion).
+- **Slide 9: Advanced Visualizations** (Detail the interactive 3D Globe and TLP Donut charts classifying threats as Red/Amber/Green).
+- **Slide 10: UI/UX Accessibility** (Explain how the system translates complex security jargon into digestible insights for executives using a glassmorphism HUD).
+- **Slide 11: Real-World Impact** (Why this dual-mode intelligence tool is vastly superior to static CSV logs).
+- **Slide 12: Conclusion & Q/A** (Final wrap up).
 
 Generate the content for these slides in a highly professional, presentation-ready format. Make the bullet points punchy and impactful.
