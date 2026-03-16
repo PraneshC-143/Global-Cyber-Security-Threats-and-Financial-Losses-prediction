@@ -49,4 +49,7 @@ Please format this presentation using a **"Light Cybersecurity Theme"**. It shou
 - **Slide 11: Real-World Impact** (Why this dual-mode intelligence tool is vastly superior to static CSV logs).
 - **Slide 12: Conclusion & Q/A** (Final wrap up).
 
-Generate the content for these slides in a highly professional, presentation-ready format. Make the bullet points punchy and impactful.
+**CRITICAL CONTENT REQUIREMENT for the Presenter:**
+**For EVERY SINGLE SLIDE, you MUST generate highly detailed, comprehensive bullet points so the presenter can read directly from the slide if needed. Additionally, at the bottom of each slide, generate a separate section called "Speaker Notes" or "Script". These Speaker Notes must explain the technical concepts on the slide in simple, easy-to-understand language so the presenter knows *exactly* what to say to the audience. The content must be extremely thorough.**
+
+Generate the complete text, bullet points, and speaker notes for these 12 slides in a professional format. Make the bullet points punchy and impactful.
